@@ -1,7 +1,8 @@
 [package]
-name = "devices"
+name = "vmm-device"
 version = "0.1.0"
 authors = ["Jing Liu <jing2.liu@linux.intel.com>"]
 edition = "2018"
 
 [dependencies]
+byteorder = "*"
