@@ -230,4 +230,72 @@ impl<'a> DeviceManager<'a> {
             Err(Error::NonExist)
         }
     }
+
+    fn first_before(
+        &self,
+        addr: GuestAddress,
+        io_type: IoType,
+    ) -> Option<(Range, &Mutex<dyn Device>)> {
+        match io_type {
+            IoType::Pio => {
+                for (range, dev) in self.pio_bus.iter().rev() {
+                    if range.0 <= addr {
+                        return Some((*range, dev));
+                    }
+                }
+                None
+            }
+            IoType::Mmio => {
+                for (range, dev) in self.mmio_bus.iter().rev() {
+                    if range.0 <= addr {
+                        return Some((*range, dev));
+                    }
+                }
+                None
+            }
+            IoType::PhysicalMmio => None,
+        }
+    }
+
+    /// Return the Device mapped the address.
+    fn get_device(&self, addr: GuestAddress, io_type: IoType) -> Option<&Mutex<dyn Device>> {
+        if let Some((Range(start, len), dev)) = self.first_before(addr, io_type) {
+            if (addr.0 - start.0) < len {
+                return Some(dev);
+            }
+        }
+        None
+    }
+
+    /// A helper function handling PIO/MMIO read commands during VM exit.
+    ///
+    /// Figure out the device according to `addr` and hand over the handling to device
+    /// specific read function.
+    /// Return error if failed to get the device.
+    pub fn read(&self, addr: GuestAddress, data: &mut [u8], io_type: IoType) -> Result<()> {
+        if let Some(dev) = self.get_device(addr, io_type) {
+            dev.lock()
+                .expect("Failed to acquire device lock")
+                .read(addr, data, io_type);
+            Ok(())
+        } else {
+            Err(Error::NonExist)
+        }
+    }
+
+    /// A helper function handling PIO/MMIO write commands during VM exit.
+    ///
+    /// Figure out the device according to `addr` and hand over the handling to device
+    /// specific write function.
+    /// Return error if failed to get the device.
+    pub fn write(&self, addr: GuestAddress, data: &[u8], io_type: IoType) -> Result<()> {
+        if let Some(dev) = self.get_device(addr, io_type) {
+            dev.lock()
+                .expect("Failed to acquire device lock")
+                .write(addr, data, io_type);
+            Ok(())
+        } else {
+            Err(Error::NonExist)
+        }
+    }
 }
