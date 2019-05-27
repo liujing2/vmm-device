@@ -19,7 +19,7 @@ pub trait Device: Send {
     ///
     /// This will be called by DeviceManager::register_device() to set
     /// the allocated resource from the vm_allocator back to device.
-    fn set_resources(&mut self, res: &[IoResource]);
+    fn set_resources(&mut self, res: &[IoResource], irq: Option<IrqResource>);
 }
 
 /// IO Resource type.
@@ -54,6 +54,9 @@ impl IoResource {
         }
     }
 }
+
+/// Legacy interrupt resource.
+pub struct IrqResource(pub Option<u32>);
 
 /// Storing Device information and for topology managing by name.
 pub struct DeviceDescriptor {
