@@ -100,13 +100,13 @@ impl<'a> DeviceManager<'a> {
         &self,
         dev: Arc<Mutex<dyn Device>>,
         parent_bus: Option<Arc<Mutex<dyn Device>>>,
-        resource: Vec<Resource>,
+        resource: Vec<IoResource>,
     ) -> DeviceDescriptor {
         let name = dev.lock().expect("Failed to require lock").name();
         DeviceDescriptor::new(name, dev.clone(), parent_bus, resource)
     }
 
-    fn allocate_resources(&mut self, resource: &mut Vec<Resource>) -> Result<()> {
+    fn allocate_resources(&mut self, resource: &mut Vec<IoResource>) -> Result<()> {
         let mut alloc_idx = 0;
 
         for res in resource.iter_mut() {
@@ -140,7 +140,7 @@ impl<'a> DeviceManager<'a> {
         Err(Error::Overlap)
     }
 
-    fn free_resources(&mut self, resource: &[Resource]) {
+    fn free_resources(&mut self, resource: &[IoResource]) {
         for res in resource.iter() {
             match res.res_type {
                 IoType::Pio => self.resource.free_io_addresses(res.addr.unwrap(), res.size),
@@ -154,7 +154,7 @@ impl<'a> DeviceManager<'a> {
     fn register_resource(
         &mut self,
         dev: Arc<Mutex<dyn Device>>,
-        resource: &mut Vec<Resource>,
+        resource: &mut Vec<IoResource>,
     ) -> Result<()> {
         for res in resource.iter() {
             match res.res_type {
@@ -187,7 +187,7 @@ impl<'a> DeviceManager<'a> {
         &mut self,
         dev: Arc<Mutex<dyn Device>>,
         parent_bus: Option<Arc<Mutex<dyn Device>>>,
-        resource: &mut Vec<Resource>,
+        resource: &mut Vec<IoResource>,
     ) -> Result<()> {
         // Reserve resource
         if let Err(e) = self.allocate_resources(resource) {
@@ -337,7 +337,7 @@ mod tests {
             ///
             /// This will be called by DeviceManager::register_device() to set
             /// the allocated resource from the vm_allocator back to device.
-            fn set_resources(&mut self, _res: &[Resource]) {}
+            fn set_resources(&mut self, _res: &[IoResource]) {}
         }
         impl BusDevice {
             pub fn new(name: String) -> Self {
@@ -346,9 +346,9 @@ mod tests {
                     config_address: 0x1000,
                 }
             }
-            pub fn get_resource(&self) -> Vec<Resource> {
+            pub fn get_resource(&self) -> Vec<IoResource> {
                 let mut req_vec = Vec::new();
-                let res = Resource::new(Some(GuestAddress(0xcf8)), 8 as GuestUsize, IoType::Pio);
+                let res = IoResource::new(Some(GuestAddress(0xcf8)), 8 as GuestUsize, IoType::Pio);
 
                 req_vec.push(res);
                 req_vec
